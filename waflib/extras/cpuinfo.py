@@ -17,7 +17,7 @@ When using this tool, the wscript will look like:
 	conf.env.append_value('CXXFLAGS', ['-DDCACHE_LINESIZE=%s' % dcacheline])
 '''
 
-import os
+import sys
 from subprocess import Popen, PIPE
 from waflib.Configure import conf
 
@@ -26,7 +26,7 @@ from waflib.Configure import conf
 def find_dcache_line_size(self):
     self.start_msg('Detecting CPU dcache line size')
     result = ''
-    if os.name == 'posix':
+    if sys.platform == 'linux2':
 	result = Popen('getconf LEVEL1_DCACHE_LINESIZE', shell=True, stdout=PIPE).stdout.readline().strip()
     if result != '':
 	self.end_msg('%s bytes' % result)
