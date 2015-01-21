@@ -11,37 +11,28 @@ or, if you have waf >= 1.6.2
 
 When using this tool, the wscript will look like:
 
+    from waflib.extras.cpuinfo import find_dcache_line_size, find_pointer_size
+
     def configure(conf):
-	conf.load('compiler_cxx cpuinfo')
-	conf.env.append_value('CXXFLAGS', ['-DDCACHE_LINESIZE=%s' % conf.find_dcache_line_size()])
-	conf.env.append_value('CXXFLAGS', ['-m%s' % conf.find_pointer_size()])
+	conf.env.append_value('CXXFLAGS', ['-DDCACHE_LINESIZE=%s' % find_dcache_line_size()])
+	conf.env.append_value('CXXFLAGS', ['-m%s' % find_pointer_size()])
 '''
 
 import sys
 from subprocess import Popen, PIPE
-from waflib.Configure import conf
 
-
-@conf
-def find_dcache_line_size(self):
-    self.start_msg('Detecting CPU dcache line size')
-    result = ''
+def find_dcache_line_size():
+    result = None
     if sys.platform == 'linux2':
 	result = Popen('getconf LEVEL1_DCACHE_LINESIZE', shell=True, stdout=PIPE).stdout.readline().strip()
-    if result != '':
-	self.end_msg('%s bytes' % result)
-    else:
-	self.fatal('could not be detected')
+    if result is not None and result == '':
+	result = None
     return result
 
-@conf
-def find_pointer_size(self):
-    self.start_msg('Detecting native pointer size')
-    result = ''
+def find_pointer_size():
+    result = None
     if sys.platform == 'linux2':
 	result = Popen('getconf LONG_BIT', shell=True, stdout=PIPE).stdout.readline().strip()
-    if result != '':
-	self.end_msg('%s bits' % result)
-    else:
-	self.fatal('could not be detected')
+    if result is not None and result == '':
+	result = None
     return result
