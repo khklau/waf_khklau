@@ -27,15 +27,7 @@ Options available are:
     --deps-base-dir : the base directory that will contain the build dependencies
 '''
 
-import sys
-import re
-import os
-from os.path import join
-from waflib import Utils, Logs, Errors
-from waflib.Configure import conf
 from waflib.extras.layout import Solution
-from waflib.extras.cpuinfo import find_dcache_line_size, find_pointer_size
-
 
 def options(optCtx):
     optCtx.load('compiler_cxx')
@@ -46,31 +38,11 @@ def options(optCtx):
 	    default='%s' % optCtx.path.abspath(), dest='dep_base_dir',
 	    help='absolute path to the directory that will contain the build dependencies e.g. /path/to/deps')
 
-@conf
-def check_hardware(self):
-    self.start_msg('Detecting CPU dcache line size')
-    self.env.dcache_line_size = find_dcache_line_size()
-    if self.env.dcache_line_size is None:
-	self.fatal('could not be detected')
-    else:
-	self.end_msg('%s bytes' % self.env.dcache_line_size)
-    self.start_msg('Detecting native pointer size')
-    self.env.pointer_size = find_pointer_size()
-    if self.env.pointer_size is None:
-	self.fatal('could not be detected')
-    else:
-	self.end_msg('%s bit' % self.env.pointer_size)
-
 def configure(confCtx):
     confCtx.load('compiler_cxx')
-    confCtx.check_hardware()
     confCtx.env.solution = Solution.fromContext(confCtx)
     confCtx.start_msg('Setting env_conf_dir to')
     confCtx.end_msg(confCtx.options.env_conf_dir)
     confCtx.start_msg('Setting dep_base_dir ')
     confCtx.end_msg(confCtx.options.dep_base_dir)
-    cxx_conf_dir = confCtx.root.make_node(confCtx.options.env_conf_dir).find_dir('cxx')
-    if cxx_conf_dir is not None:
-	confCtx.recurse(cxx_conf_dir.abspath())
-    else:
-	confCtx.fatal('Could not find Cxx environment configuration under %s' % confCtx.options.env_conf_dir)
+    conf_result_dir = confCtx.root.make_node(confCtx.options.env_conf_dir).find_dir(confCtx.env.CXX_NAME).get_bld()
