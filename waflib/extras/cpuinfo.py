@@ -36,3 +36,11 @@ def find_pointer_size():
     if result is not None and result == '':
 	result = None
     return result
+
+def find_cpu_isa():
+    result = None
+    if sys.platform == 'linux2':
+	result = Popen('uname -p', shell=True, stdout=PIPE).stdout.readline().strip()
+    if result is not None and result == '':
+	result = None
+    return result
