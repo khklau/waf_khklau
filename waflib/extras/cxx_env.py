@@ -28,6 +28,7 @@ Options available are:
 '''
 
 from waflib.extras.layout import Solution
+from waflib.extras.envconf import process
 
 def options(optCtx):
     optCtx.load('compiler_cxx')
@@ -46,3 +47,11 @@ def configure(confCtx):
     confCtx.start_msg('Setting dep_base_dir ')
     confCtx.end_msg(confCtx.options.dep_base_dir)
     conf_result_dir = confCtx.root.make_node(confCtx.options.env_conf_dir).find_dir(confCtx.env.CXX_NAME).get_bld()
+    if conf_result_dir is None:
+	confCtx.fatal('directory not found')
+    else:
+	conf_result_file = conf_result_dir.find_node('%s.json' % confCtx.env.CXX_NAME)
+	if conf_result_file is None:
+	    confCtx.fatal('file not found')
+	else:
+	    process(conf_result_file.abspath(), confCtx)
