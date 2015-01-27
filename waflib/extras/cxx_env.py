@@ -18,7 +18,7 @@ When using this tool, the wscript will look like:
 	conf.load('cxx_env')
 
     def build(bld):
-	bld(source='main.cpp', target='app', use='ZEROMQ')
+	bld(source='main.cpp', target='app')
 
 Options available are:
     --mode : the build mode
