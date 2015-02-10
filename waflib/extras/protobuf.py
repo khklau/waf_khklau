@@ -59,6 +59,9 @@ def options(optCtx):
 	    help='''absolute path to the protobuf libraries
 	    e.g. /path/to/protobuf/lib''')
 
+def prepare(prep):
+	pass
+
 @conf
 def check_protobuf(self):
     self.start_msg('Checking Protocol Buffer compiler')

@@ -123,6 +123,10 @@ def options(opt):
 						(default: %s)' % py_version)
 
 
+def prepare(prep):
+	pass
+
+
 @conf
 def __boost_get_version_file(self, d):
 	dnode = self.root.find_dir(d)

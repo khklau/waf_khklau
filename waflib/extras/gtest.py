@@ -43,6 +43,9 @@ def options(optCtx):
 	    help='''absolute path to the gtest libraries
 	    e.g. /path/to/gtest/lib''')
 
+def prepare(prep):
+	pass
+
 @conf
 def check_gtest(self):
     self.start_msg('Checking Gtest headers')

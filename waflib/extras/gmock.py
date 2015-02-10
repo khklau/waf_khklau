@@ -43,6 +43,9 @@ def options(optCtx):
 	    help='''absolute path to the gmock libraries
 	    e.g. /path/to/gmock/lib''')
 
+def prepare(prep):
+	pass
+
 @conf
 def check_gmock(self):
     self.start_msg('Checking Gmock headers')

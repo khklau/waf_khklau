@@ -43,6 +43,9 @@ def options(optCtx):
 	    help='''absolute path to the zeromq libraries
 	    e.g. /path/to/zeromq/lib''')
 
+def prepare(prep):
+	pass
+
 @conf
 def check_zeromq(self):
     self.start_msg('Checking Zeromq headers')
