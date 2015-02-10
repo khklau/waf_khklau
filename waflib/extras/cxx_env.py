@@ -21,10 +21,7 @@ When using this tool, the wscript will look like:
 	bld(source='main.cpp', target='app')
 
 Options available are:
-    --mode : the build mode
-    --platform : the target build platform
     --env-conf-dir : the directory containing the build environment configuration
-    --deps-base-dir : the base directory that will contain the build dependencies
 '''
 
 from waflib.extras.layout import Solution
@@ -35,16 +32,16 @@ def options(optCtx):
     optCtx.add_option('--env-conf-dir', type='string',
 	    default='%s' % optCtx.path.abspath(), dest='env_conf_dir',
 	    help='absolute path to the directory containing the build environment configuration e.g. /path/to/myproject/env')
-    optCtx.add_option('--dep-base-dir', type='string',
-	    default='%s' % optCtx.path.abspath(), dest='dep_base_dir',
-	    help='absolute path to the directory that will contain the build dependencies e.g. /path/to/deps')
+
+def prepare(prepCtx):
+    pass
 
 def configure(confCtx):
     confCtx.load('compiler_cxx')
     confCtx.env.solution = Solution.fromContext(confCtx)
     confCtx.start_msg('Setting env_conf_dir to')
     confCtx.end_msg(confCtx.options.env_conf_dir)
-    confCtx.start_msg('Setting dep_base_dir ')
+    confCtx.start_msg('Setting dep_base_dir to')
     confCtx.end_msg(confCtx.options.dep_base_dir)
     conf_result_dir = confCtx.root.make_node(confCtx.options.env_conf_dir).find_dir(confCtx.env.CXX_NAME).get_bld()
     if conf_result_dir is None:
