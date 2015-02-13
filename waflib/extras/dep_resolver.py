@@ -42,11 +42,69 @@ class Product:
 	self.version = version
 	self.dep_list = dep_list
 
+    def __repr__(self):
+	return "__import__('waflib').extras.dep_resolver.%s(%s, %s, %s)" % (
+		self.__class__.__name__,
+		self.name.__repr__(),
+		self.version.__repr__(),
+		self.dep_list.__repr__())
+
     def getName(self):
 	return self.name
 
     def getVersion(self):
 	return self.version
+
+class Directory:
+
+    def __init__(self, root, directory = {}):
+	self.root = root
+	self.directory = directory
+
+    def __repr__(self):
+	return "__import__('waflib').extras.dep_resolver.%s(%s, %s)" % (
+		self.__class__.__name__,
+		self.root.__repr__(),
+		self.directory.__repr__())
+
+    def getRoot(self):
+	return self.root
+
+    def add(self, product):
+	self.directory[product.getName()] = product
+
+    def contains(self, name):
+	return name in self.directory
+
+    def find(self, name):
+	return self.directory[name]
+
+    @classmethod
+    def __assemble(cls, context, directory, productList):
+	if productList is None or len(productList) == 0:
+	    return directory
+	else:
+	    product = productList[0]
+	    if directory.contains(product.getName()):
+		existingVer = directory.find(product.getName()).getVersion()
+		if product.getVersion() != existingVer:
+		    context.fatal('Version mismatch for %s: %s vs %s' % (
+			    product.getName(),
+			    product.getVersion(),
+			    existingVer))
+		    return directory
+		else:
+		    context.fatal('Cyclic dependency detected for %s' % product.getName())
+		    return directory
+	    else:
+		directory.add(product)
+	    productList.pop(0)
+	    productList.extend(product.dep_list)
+	    return Directory.__assemble(context, directory, productList)
+
+    @classmethod
+    def assemble(cls, context, product):
+	return Directory.__assemble(context, Directory(product), [] + product.dep_list)
 
 def parse_hook(dictionary):
     if 'dependencies' in dictionary:
@@ -82,7 +140,8 @@ def options(optCtx):
 
 def prepare(prepCtx):
     prepCtx.msg('Preparing dependencies specified in', getJsonNode(prepCtx).abspath())
-    for dep in parse(prepCtx, getJsonNode(prepCtx)).dep_list:
+    prepCtx.env.dep_directory = Directory.assemble(prepCtx, parse(prepCtx, getJsonNode(prepCtx)))
+    for dep in prepCtx.env.dep_directory.getRoot().dep_list:
 	prepCtx.load(dep.getName())
 
 def configure(confCtx):
