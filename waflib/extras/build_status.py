@@ -72,7 +72,7 @@ class BuildStatus:
 
     @classmethod
     def init(cls, dirPath):
-	filePath = dirPath + os.sep + cls.__STATUS_FILE_NAME
+	filePath = os.path.join(dirPath, cls.__STATUS_FILE_NAME)
 	handle = open(filePath, 'w')
 	try:
 	    exclusive_lock(handle)
@@ -85,7 +85,7 @@ class BuildStatus:
 
     @classmethod
     def load(cls, dirPath):
-	filePath = dirPath + os.sep + cls.__STATUS_FILE_NAME
+	filePath = os.path.join(dirPath, cls.__STATUS_FILE_NAME)
 	if not os.path.exists(filePath):
 	    raise ValueError('%s does not exist' % filePath)
 	elif not os.access(filePath, os.R_OK):
