@@ -30,23 +30,26 @@ Options available are:
 import os
 import json
 import pprint
+import waflib.Context
 from waflib.extras.layout import Solution
 from waflib.extras.envconf import process
 
 class Product:
 
-    __slots__ = ("dep_list")
+    __slots__ = ("dep_file_path", "dep_list")
 
-    def __init__(self, name, version, dep_list):
+    def __init__(self, name, version, dep_file_path, dep_list):
 	self.name = name
 	self.version = version
+	self.dep_file_path = dep_file_path
 	self.dep_list = dep_list
 
     def __repr__(self):
-	return "__import__('waflib').extras.dep_resolver.%s(%s, %s, %s)" % (
+	return "__import__('waflib').extras.dep_resolver.%s(%s, %s, %s, %s)" % (
 		self.__class__.__name__,
 		self.name.__repr__(),
 		self.version.__repr__(),
+		self.dep_file_path.__repr__(),
 		self.dep_list.__repr__())
 
     def getName(self):
@@ -81,7 +84,7 @@ class Directory:
 
     @classmethod
     def __assemble(cls, context, directory, productList):
-	if productList is None or len(productList) == 0:
+	if len(productList) == 0:
 	    return directory
 	else:
 	    product = productList[0]
@@ -108,42 +111,76 @@ class Directory:
 
 def parse_hook(dictionary):
     if 'dependencies' in dictionary:
-	return Product(dictionary['product'].encode('ascii', 'ignore'),
+	return Product(
+		dictionary['product'].encode('ascii', 'ignore'),
 		dictionary['version'].encode('ascii', 'ignore'),
+		'',
 		dictionary['dependencies'])
     else:
-	return Product(dictionary['product'].encode('ascii', 'ignore'),
+	return Product(
+		dictionary['product'].encode('ascii', 'ignore'),
 		dictionary['version'].encode('ascii', 'ignore'),
+		'',
 		[])
 
-def parse(ctx, filenode):
-    if filenode is None or not os.path.exists(filenode.abspath()):
-	ctx.fatal('dependency.json not found')
-    handle = open(filenode.abspath(), 'r')
+def parse(ctx, filepath):
+    if not os.path.exists(filepath):
+	ctx.fatal('%s not found' % filepath)
+    handle = open(filepath, 'r')
     contents = ''
     try:
 	for line in handle:
 	    contents += line
     finally:
 	handle.close()
-    return json.loads(contents, encoding='ascii', object_hook=parse_hook)
+    product = json.loads(contents, encoding='ascii', object_hook=parse_hook)
+    product.dep_file_path = filepath
+    return product
 
-def getJsonNode(ctx):
-    return ctx.path.find_node('dependency.json')
+__JSON_FILENAME = 'dependency.json'
+
+def findDependencyJson(baseDir):
+    jsonList = []
+    for dirPath, subDirList, fileList in os.walk(baseDir, followlinks=True):
+	for file in fileList:
+	    if file.lower() == __JSON_FILENAME:
+		jsonList.append(os.path.join(dirPath, file))
+    return jsonList
+
+def findWhichDepsExistLocally(ctx, directory, baseDir):
+    ctx.start_msg('Searching dependency base directory')
+    existingProducts = dict()
+    for json in findDependencyJson(ctx.options.dep_base_dir):
+	product = parse(ctx, json)
+	existingProducts[product.getName()] = product
+    for dep in directory.getRoot().dep_list:
+	if dep.getName() in existingProducts and dep.getVersion() == existingProducts[dep.getName()].getVersion():
+	    dep.dep_file_path = existingProducts[dep.getName()].dep_file_path
+    ctx.end_msg('ok')
+
+def getThisJsonPath(ctx):
+    path = os.path.join(waflib.Context.top_dir, __JSON_FILENAME)
+    if os.access(path, os.R_OK):
+	return path
+    else:
+	return __JSON_FILENAME
 
 def options(optCtx):
     optCtx.add_option('--dep-base-dir', type='string',
 	    default='%s' % optCtx.path.abspath(), dest='dep_base_dir',
 	    help='absolute path to the directory that will contain the build dependencies e.g. /path/to/deps')
-    for dep in parse(optCtx, getJsonNode(optCtx)).dep_list:
+    for dep in parse(optCtx, getThisJsonPath(optCtx)).dep_list:
 	optCtx.load(dep.getName())
 
 def prepare(prepCtx):
-    prepCtx.msg('Preparing dependencies specified in', getJsonNode(prepCtx).abspath())
-    prepCtx.env.dep_directory = Directory.assemble(prepCtx, parse(prepCtx, getJsonNode(prepCtx)))
+    prepCtx.msg('Preparing dependencies specified in', getThisJsonPath(prepCtx))
+    prepCtx.env.dep_directory = Directory.assemble(prepCtx, parse(prepCtx, getThisJsonPath(prepCtx)))
+    prepCtx.msg('Specified dependency base directory', prepCtx.options.dep_base_dir)
+    findWhichDepsExistLocally(prepCtx, prepCtx.env.dep_directory, prepCtx.options.dep_base_dir)
+    prepCtx.msg('Dependency tree', prepCtx.env.dep_directory)
     for dep in prepCtx.env.dep_directory.getRoot().dep_list:
 	prepCtx.load(dep.getName())
 
 def configure(confCtx):
-    for dep in parse(confCtx, getJsonNode(confCtx)).dep_list:
+    for dep in parse(confCtx, getThisJsonPath(confCtx)).dep_list:
 	confCtx.load(dep.getName())
