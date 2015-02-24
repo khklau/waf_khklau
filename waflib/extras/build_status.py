@@ -71,19 +71,6 @@ class BuildStatus:
 		self.filePath.__repr__())
 
     @classmethod
-    def init(cls, dirPath):
-	filePath = os.path.join(dirPath, cls.__STATUS_FILE_NAME)
-	handle = open(filePath, 'w')
-	try:
-	    exclusive_lock(handle)
-	    handle.write(cls.__STATUS_FAILURE)
-	    handle.write('\n')
-	    unlock(handle)
-	finally:
-	    handle.close()
-	return BuildStatus(filePath)
-
-    @classmethod
     def load(cls, dirPath):
 	filePath = os.path.join(dirPath, cls.__STATUS_FILE_NAME)
 	if not os.path.exists(filePath):
@@ -91,7 +78,22 @@ class BuildStatus:
 	elif not os.access(filePath, os.R_OK):
 	    raise ValueError('%s is not readable' % filePath)
 	else:
-	    exclusive_lock(handle)
+	    return BuildStatus(filePath)
+
+    @classmethod
+    def init(cls, dirPath):
+	filePath = os.path.join(dirPath, cls.__STATUS_FILE_NAME)
+	if os.access(filePath, os.R_OK):
+	    return BuildStatus.load(dirPath)
+	else:
+	    handle = open(filePath, 'w')
+	    try:
+		exclusive_lock(handle)
+		handle.write(cls.__STATUS_FAILURE)
+		handle.write('\n')
+		unlock(handle)
+	    finally:
+		handle.close()
 	    return BuildStatus(filePath)
 
     def setSuccess(self):
