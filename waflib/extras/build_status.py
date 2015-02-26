@@ -83,7 +83,7 @@ class BuildStatus:
     @classmethod
     def init(cls, dirPath):
 	filePath = os.path.join(dirPath, cls.__STATUS_FILE_NAME)
-	if os.access(filePath, os.R_OK):
+	if os.path.exists(filePath) and os.access(filePath, os.R_OK):
 	    return BuildStatus.load(dirPath)
 	else:
 	    handle = open(filePath, 'w')
@@ -95,6 +95,17 @@ class BuildStatus:
 	    finally:
 		handle.close()
 	    return BuildStatus(filePath)
+
+    def get(self):
+	status = ''
+	handle = open(self.filePath, 'r')
+	try:
+	    shared_lock(handle)
+	    status = handle.readline()
+	    unlock(handle)
+	finally:
+	    handle.close()
+	return status.lower()
 
     def setSuccess(self):
 	handle = open(self.filePath, 'w')
@@ -125,7 +136,7 @@ class BuildStatus:
 	    unlock(handle)
 	finally:
 	    handle.close()
-	return status.lower() == BuildStatus.__STATUS_SUCCESS
+	return status.lower().strip() == BuildStatus.__STATUS_SUCCESS
 
     def isFailure(self):
 	status = ''
@@ -136,4 +147,4 @@ class BuildStatus:
 	    unlock(handle)
 	finally:
 	    handle.close()
-	return status.lower() == BuildStatus.__STATUS_FAILURE
+	return status.lower().strip() == BuildStatus.__STATUS_FAILURE
