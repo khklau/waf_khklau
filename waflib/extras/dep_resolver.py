@@ -177,7 +177,6 @@ def prepare(prepCtx):
     prepCtx.env.dep_directory = Directory.assemble(prepCtx, parse(prepCtx, getThisJsonPath(prepCtx)))
     prepCtx.msg('Specified dependency base directory', prepCtx.options.dep_base_dir)
     findWhichDepsExistLocally(prepCtx, prepCtx.env.dep_directory, prepCtx.options.dep_base_dir)
-    prepCtx.msg('Dependency tree', prepCtx.env.dep_directory)
     for dep in prepCtx.env.dep_directory.getRoot().dep_list:
 	prepCtx.load(dep.getName())
 
