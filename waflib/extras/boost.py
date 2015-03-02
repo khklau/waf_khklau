@@ -48,9 +48,14 @@ Passing `--boost-linkage_autodetect` might help ensuring having a correct linkag
 
 '''
 
-import sys
+import os
 import re
-from waflib import Utils, Logs, Errors
+import sys
+import subprocess
+import tempfile
+import urllib
+import zipfile
+from waflib import Utils, Logs, Errors, Context
 from waflib.Configure import conf
 
 BOOST_LIBS = ['/usr/lib/x86_64-linux-gnu', '/usr/lib/i386-linux-gnu',
@@ -62,6 +67,8 @@ BOOST_VERSION_CODE = '''
 #include <boost/version.hpp>
 int main() { std::cout << BOOST_LIB_VERSION << std::endl; }
 '''
+BOOTSTRAP_URL = 'https://github.com/khklau/boost_bootstrap/archive/%s'
+BOOTSTRAP_FILE = 'boost_bootstrap-%s.zip'
 
 # toolsets from {boost_dir}/tools/build/v2/tools/common.jam
 PLATFORM = Utils.unversioned_sys_platform()
@@ -123,9 +130,56 @@ def options(opt):
 						(default: %s)' % py_version)
 
 
-def prepare(prep):
-	pass
-
+def prepare(prepCtx):
+	if not prepCtx.env.dep_directory.contains('boost'):
+		return
+	productPath = ''
+	product = prepCtx.env.dep_directory.find('boost')
+	if len(product.dep_file_path) > 0:
+		productPath = os.path.dirname(product.dep_file_path)
+	else:
+		productPath = os.path.join(prepCtx.options.dep_base_dir,
+				'%s-%s' % (product.getName(), product.getVersion()))
+	topWscript = os.path.join(productPath, Context.WSCRIPT_FILE)
+	if not os.path.exists(topWscript) or not os.access(topWscript, os.R_OK):
+		if os.path.isdir(productPath):
+			shutil.rmtree(productPath)
+		else:
+			os.remove(productPath)
+		os.mkdir(productPath)
+		tempDir = tempfile.mkdtemp(prefix='boost_prepare-')
+		try:
+			if product.getVersion().lower() == 'master':
+				sourceFile = 'master.zip'
+			else:
+				sourceFile = BOOTSTRAP_FILE % product.getVersion()
+			url = BOOTSTRAP_URL % sourceFile
+			filePath = os.path.join(tempDir, sourceFile)
+			prepCtx.start_msg('Downloading %s' % url)
+			triesRemaining = 10
+			while triesRemaining > 1:
+				try:
+					urllib.urlretrieve(url, filePath)
+					break
+				except urllib.ContentTooShortError:
+					triesRemaining -= 1
+				if os.path.exists(filePath):
+					os.remove(filePath)
+				else:
+					prepCtx.fatal('Could not download %s' % url)
+			handle = zipfile.Zipfile(filePath, 'r')
+			handle.extractall(productPath)
+		finally:
+			shutil.rmtree(tempDir)
+	wafExe = os.path.abspath(sys.argv[0])
+	os.chdir(productPath)
+	returnCode = subprocess.call([
+			wafExe,
+			'prepare',
+			'configure',
+			'build'])
+	if returnCode != 0:
+		prepCtx.fatal('Boost failed: %d' % returnCode)
 
 @conf
 def __boost_get_version_file(self, d):
