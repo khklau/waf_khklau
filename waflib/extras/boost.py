@@ -172,25 +172,29 @@ def prepare(prepCtx):
 		finally:
 			shutil.rmtree(tempDir)
 	wafExe = os.path.abspath(sys.argv[0])
-	os.chdir(productPath)
-	prepCtx.msg('Preparing Boost dependency in', productPath)
-	returnCode = subprocess.call([
-			wafExe,
-			'prepare',
-			'configure',
-			'build'])
-	if returnCode != 0:
-		prepCtx.fatal('Boost preparation failed: %d' % returnCode)
-	else:
-		inclPath = os.path.join(productPath, 'include', 'boost-%s' % re.sub('\.', '_', product.getVersion()))
-		libPath = os.path.join(productPath, 'lib')
-		if os.path.isdir(inclPath) and os.path.isdir(libPath):
-			prepCtx.msg('Setting Boost option boost_includes to', inclPath)
-			prepCtx.options.boost_includes = inclPath
-			prepCtx.msg('Setting Boost option boost_libs to', libPath)
-			prepCtx.options.boost_libs = libPath
+	cwd = os.getcwd()
+	try:
+		os.chdir(productPath)
+		prepCtx.msg('Preparing Boost dependency in', productPath)
+		returnCode = subprocess.call([
+				wafExe,
+				'prepare',
+				'configure',
+				'build'])
+		if returnCode != 0:
+			prepCtx.fatal('Boost preparation failed: %d' % returnCode)
 		else:
-			prepCtx.fatal('Boost preparation failed: %s and %s not found' % (inclPath, libPath))
+			inclPath = os.path.join(productPath, 'include', 'boost-%s' % re.sub('\.', '_', product.getVersion()))
+			libPath = os.path.join(productPath, 'lib')
+			if os.path.isdir(inclPath) and os.path.isdir(libPath):
+				prepCtx.msg('Setting Boost option boost_includes to', inclPath)
+				prepCtx.options.boost_includes = inclPath
+				prepCtx.msg('Setting Boost option boost_libs to', libPath)
+				prepCtx.options.boost_libs = libPath
+			else:
+				prepCtx.fatal('Boost preparation failed: %s and %s not found' % (inclPath, libPath))
+	finally:
+		os.chdir(cwd)
 
 @conf
 def __boost_get_version_file(self, d):
