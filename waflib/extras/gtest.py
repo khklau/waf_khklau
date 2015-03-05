@@ -25,13 +25,17 @@ Options available are:
     --gtest-libpath : the directory containing the library files
 '''
 
-import sys
-import re
 import os
-from os.path import join
-from waflib import Utils, Logs, Errors
+import sys
+import subprocess
+import tempfile
+import urllib
+import zipfile
+from waflib import Utils, Context
 from waflib.Configure import conf
 
+BOOTSTRAP_URL = 'https://github.com/khklau/gtest_bootstrap/archive/%s'
+BOOTSTRAP_FILE = 'gtest_bootstrap-%s.zip'
 
 def options(optCtx):
     optCtx.add_option('--gtest-incpath', type='string',
@@ -43,19 +47,82 @@ def options(optCtx):
 	    help='''absolute path to the gtest libraries
 	    e.g. /path/to/gtest/lib''')
 
-def prepare(prep):
-	pass
+def prepare(prepCtx):
+    if not prepCtx.env.dep_directory.contains('gtest'):
+	return
+    productPath = ''
+    product = prepCtx.env.dep_directory.find('gtest')
+    if len(product.dep_file_path) > 0:
+	productPath = os.path.dirname(product.dep_file_path)
+    else:
+	productPath = os.path.join(prepCtx.options.dep_base_dir,
+		'%s-%s' % (product.getName(), product.getVersion()))
+    topWscript = os.path.join(productPath, Context.WSCRIPT_FILE)
+    if not os.path.exists(topWscript) or not os.access(topWscript, os.R_OK):
+	if os.path.isdir(productPath):
+	    shutil.rmtree(productPath)
+	else:
+	    os.remove(productPath)
+	os.mkdir(productPath)
+	tempDir = tempfile.mkdtemp(prefix='gtest_prepare-')
+	try:
+	    if product.getVersion().lower() == 'master':
+		sourceFile = 'master.zip'
+	    else:
+		sourceFile = BOOTSTRAP_FILE % product.getVersion()
+	    url = BOOTSTRAP_URL % sourceFile
+	    filePath = os.path.join(tempDir, sourceFile)
+	    prepCtx.start_msg('Downloading %s' % url)
+	    triesRemaining = 10
+	    while triesRemaining > 1:
+		try:
+		    urllib.urlretrieve(url, filePath)
+		    break
+		except urllib.ContentTooShortError:
+		    triesRemaining -= 1
+		if os.path.exists(filePath):
+		    os.remove(filePath)
+		else:
+		    prepCtx.fatal('Could not download %s' % url)
+	    handle = zipfile.Zipfile(filePath, 'r')
+	    handle.extractall(productPath)
+	finally:
+	    shutil.rmtree(tempDir)
+    wafExe = os.path.abspath(sys.argv[0])
+    cwd = os.getcwd()
+    try:
+	os.chdir(productPath)
+	prepCtx.msg('Preparing Google Test dependency in', productPath)
+	returnCode = subprocess.call([
+		wafExe,
+		'prepare',
+		'configure',
+		'build'])
+	if returnCode != 0:
+	    prepCtx.fatal('Google Test preparation failed: %d' % returnCode)
+	else:
+	    inclPath = os.path.join(productPath, 'include')
+	    libPath = os.path.join(productPath, 'lib')
+	    if os.path.isdir(inclPath) and os.path.isdir(libPath):
+		prepCtx.msg('Setting Google Test option gtest_incpath to', inclPath)
+		prepCtx.options.gtest_incpath = inclPath
+		prepCtx.msg('Setting Google Test option gtest_libpath to', libPath)
+		prepCtx.options.gtest_libpath = libPath
+	    else:
+		prepCtx.fatal('Google Test preparation failed: %s and %s not found' % (inclPath, libPath))
+    finally:
+	os.chdir(cwd)
 
 @conf
 def check_gtest(self):
     self.start_msg('Checking Gtest headers')
-    headerPath = join(self.env['INCLUDES_GTEST'], 'gtest', 'gtest.h')
+    headerPath = os.path.join(self.env['INCLUDES_GTEST'], 'gtest', 'gtest.h')
     if not os.access(headerPath, os.R_OK):
 	self.fatal('%s is not readable' % headerPath)
     self.end_msg('ok')
     self.start_msg('Checking Gtest libraries')
     for lib in self.env['STLIB_GTEST']: 
-	libPath = join(self.env['STLIBPATH_GTEST'], "lib%s.a" % lib)
+	libPath = os.path.join(self.env['STLIBPATH_GTEST'], "lib%s.a" % lib)
 	if not os.access(libPath, os.R_OK):
 	    self.fatal('%s is not readable' % libPath)
     self.end_msg('ok')
