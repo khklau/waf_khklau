@@ -25,13 +25,17 @@ Options available are:
     --gmock-libpath : the directory containing the library files
 '''
 
-import sys
-import re
 import os
-from os.path import join
-from waflib import Utils, Logs, Errors
+import sys
+import subprocess
+import tempfile
+import urllib
+import zipfile
+from waflib import Utils, Context
 from waflib.Configure import conf
 
+BOOTSTRAP_URL = 'https://github.com/khklau/gmock_bootstrap/archive/%s'
+BOOTSTRAP_FILE = 'gmock_bootstrap-%s.zip'
 
 def options(optCtx):
     optCtx.add_option('--gmock-incpath', type='string',
@@ -43,19 +47,85 @@ def options(optCtx):
 	    help='''absolute path to the gmock libraries
 	    e.g. /path/to/gmock/lib''')
 
-def prepare(prep):
-	pass
+def prepare(prepCtx):
+    if not prepCtx.env.dep_directory.contains('gmock'):
+	return
+    productPath = ''
+    product = prepCtx.env.dep_directory.find('gmock')
+    if len(product.dep_file_path) > 0:
+	productPath = os.path.dirname(product.dep_file_path)
+    else:
+	productPath = os.path.join(prepCtx.options.dep_base_dir,
+		'%s-%s' % (product.getName(), product.getVersion()))
+    topWscript = os.path.join(productPath, Context.WSCRIPT_FILE)
+    if not os.path.exists(topWscript) or not os.access(topWscript, os.R_OK):
+	if os.path.isdir(productPath):
+	    shutil.rmtree(productPath)
+	else:
+	    os.remove(productPath)
+	os.mkdir(productPath)
+	tempDir = tempfile.mkdtemp(prefix='gmock_prepare-')
+	try:
+	    if product.getVersion().lower() == 'master':
+		sourceFile = 'master.zip'
+	    else:
+		sourceFile = BOOTSTRAP_FILE % product.getVersion()
+	    url = BOOTSTRAP_URL % sourceFile
+	    filePath = os.path.join(tempDir, sourceFile)
+	    prepCtx.start_msg('Downloading %s' % url)
+	    triesRemaining = 10
+	    while triesRemaining > 1:
+		try:
+		    urllib.urlretrieve(url, filePath)
+		    break
+		except urllib.ContentTooShortError:
+		    triesRemaining -= 1
+		if os.path.exists(filePath):
+		    os.remove(filePath)
+		else:
+		    prepCtx.fatal('Could not download %s' % url)
+	    handle = zipfile.Zipfile(filePath, 'r')
+	    handle.extractall(productPath)
+	finally:
+	    shutil.rmtree(tempDir)
+    wafExe = os.path.abspath(sys.argv[0])
+    cwd = os.getcwd()
+    try:
+	os.chdir(productPath)
+	prepCtx.msg('Preparing Google Mock dependency in', productPath)
+	returnCode = subprocess.call([
+		wafExe,
+		'prepare',
+		'configure',
+		'build'])
+	if returnCode != 0:
+	    prepCtx.fatal('Google Mock preparation failed: %d' % returnCode)
+	else:
+	    binPath = os.path.join(productPath, 'bin')
+	    inclPath = os.path.join(productPath, 'include')
+	    libPath = os.path.join(productPath, 'lib')
+	    if os.path.isdir(binPath) and os.path.isdir(inclPath) and os.path.isdir(libPath):
+		prepCtx.msg('Setting Google Mock option gmock_binpath to', binPath)
+		prepCtx.options.gmock_binpath = binPath
+		prepCtx.msg('Setting Google Mock option gmock_incpath to', inclPath)
+		prepCtx.options.gmock_incpath = inclPath
+		prepCtx.msg('Setting Google Mock option gmock_libpath to', libPath)
+		prepCtx.options.gmock_libpath = libPath
+	    else:
+		prepCtx.fatal('Google Mock preparation failed: %s and %s not found' % (inclPath, libPath))
+    finally:
+	os.chdir(cwd)
 
 @conf
 def check_gmock(self):
     self.start_msg('Checking Gmock headers')
-    headerPath = join(self.env['INCLUDES_GMOCK'], 'gmock', 'gmock.h')
+    headerPath = os.path.join(self.env['INCLUDES_GMOCK'], 'gmock', 'gmock.h')
     if not os.access(headerPath, os.R_OK):
 	self.fatal('%s is not readable' % headerPath)
     self.end_msg('ok')
     self.start_msg('Checking Gmock libraries')
     for lib in self.env['STLIB_GMOCK']: 
-	libPath = join(self.env['STLIBPATH_GMOCK'], "lib%s.a" % lib)
+	libPath = os.path.join(self.env['STLIBPATH_GMOCK'], "lib%s.a" % lib)
 	if not os.access(libPath, os.R_OK):
 	    self.fatal('%s is not readable' % libPath)
     self.end_msg('ok')
