@@ -21,6 +21,7 @@ When using this tool, the wscript will look like:
 	bld(source='main.cpp', target='app', use='GTEST')
 
 Options available are:
+    --gtest-binpath : the directory containing the gtest-config script
     --gtest-incpath : the directory containing the header files
     --gtest-libpath : the directory containing the library files
 '''
@@ -38,6 +39,10 @@ BOOTSTRAP_URL = 'https://github.com/khklau/gtest_bootstrap/archive/%s'
 BOOTSTRAP_FILE = 'gtest_bootstrap-%s.zip'
 
 def options(optCtx):
+    optCtx.add_option('--gtest-binpath', type='string',
+	    default='', dest='gtest_binpath',
+	    help='''absolute path to the gtest headers
+	    e.g. /path/to/gtest/bin''')
     optCtx.add_option('--gtest-incpath', type='string',
 	    default='', dest='gtest_incpath',
 	    help='''absolute path to the gtest headers
@@ -101,9 +106,12 @@ def prepare(prepCtx):
 	if returnCode != 0:
 	    prepCtx.fatal('Google Test preparation failed: %d' % returnCode)
 	else:
+	    binPath = os.path.join(productPath, 'bin')
 	    inclPath = os.path.join(productPath, 'include')
 	    libPath = os.path.join(productPath, 'lib')
-	    if os.path.isdir(inclPath) and os.path.isdir(libPath):
+	    if os.path.isdir(binPath) and os.path.isdir(inclPath) and os.path.isdir(libPath):
+		prepCtx.msg('Setting Google Test option gtest_binpath to', binPath)
+		prepCtx.options.gtest_binpath = binPath
 		prepCtx.msg('Setting Google Test option gtest_incpath to', inclPath)
 		prepCtx.options.gtest_incpath = inclPath
 		prepCtx.msg('Setting Google Test option gtest_libpath to', libPath)
