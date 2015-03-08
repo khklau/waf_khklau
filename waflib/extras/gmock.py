@@ -38,6 +38,10 @@ BOOTSTRAP_URL = 'https://github.com/khklau/gmock_bootstrap/archive/%s'
 BOOTSTRAP_FILE = 'gmock_bootstrap-%s.zip'
 
 def options(optCtx):
+    optCtx.add_option('--gmock-binpath', type='string',
+	    default='', dest='gmock_binpath',
+	    help='''absolute path to the gmock scripts
+	    e.g. /path/to/gmock/bin''')
     optCtx.add_option('--gmock-incpath', type='string',
 	    default='', dest='gmock_incpath',
 	    help='''absolute path to the gmock headers
