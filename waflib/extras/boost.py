@@ -56,7 +56,7 @@ import tempfile
 import zipfile
 from waflib import Utils, Logs, Errors, Context
 from waflib.Configure import conf
-from waflib.extras.url_utils import tryDownload
+from waflib.extras.url_utils import extractRemoteZip
 
 BOOST_LIBS = ['/usr/lib/x86_64-linux-gnu', '/usr/lib/i386-linux-gnu',
 	      '/usr/lib', '/usr/local/lib', '/opt/local/lib', '/sw/lib', '/lib']
@@ -147,22 +147,16 @@ def prepare(prepCtx):
 		else:
 			os.remove(productPath)
 		os.mkdir(productPath)
-		tempDir = tempfile.mkdtemp(prefix='boost_prepare-')
-		try:
-			if product.getVersion().lower() == 'master':
-				sourceFile = 'master.zip'
-			else:
-				sourceFile = BOOTSTRAP_FILE % product.getVersion()
-			url = BOOTSTRAP_URL % sourceFile
-			filePath = os.path.join(tempDir, sourceFile)
-			prepCtx.start_msg('Downloading %s' % url)
-			if tryDownload(url, filePath, 10):
-				handle = zipfile.Zipfile(filePath, 'r')
-				handle.extractall(productPath)
-			else:
-				prepCtx.fatal('Could not download %s' % url)
-		finally:
-			shutil.rmtree(tempDir)
+		if product.getVersion().lower() == 'master':
+			sourceFile = 'master.zip'
+		else:
+			sourceFile = BOOTSTRAP_FILE % product.getVersion()
+		url = BOOTSTRAP_URL % sourceFile
+		prepCtx.start_msg('Downloading and extracting %s to' % url)
+		if extractRemoteZip(url, productPath):
+			prepCtx.end_msg(productPath)
+		else:
+			prepCtx.fatal('Could not download and extract %s' % url)
 	wafExe = os.path.abspath(sys.argv[0])
 	cwd = os.getcwd()
 	try:
