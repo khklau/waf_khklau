@@ -53,7 +53,6 @@ import re
 import sys
 import subprocess
 import tempfile
-import urllib
 import zipfile
 from waflib import Utils, Logs, Errors, Context
 from waflib.Configure import conf

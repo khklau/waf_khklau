@@ -29,7 +29,6 @@ import os
 import sys
 import subprocess
 import tempfile
-import urllib
 import zipfile
 from waflib import Utils, Context
 from waflib.Configure import conf
