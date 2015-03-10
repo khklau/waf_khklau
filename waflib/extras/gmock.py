@@ -33,6 +33,7 @@ import urllib
 import zipfile
 from waflib import Utils, Context
 from waflib.Configure import conf
+from waflib.extras.url_utils import tryDownload
 
 BOOTSTRAP_URL = 'https://github.com/khklau/gmock_bootstrap/archive/%s'
 BOOTSTRAP_FILE = 'gmock_bootstrap-%s.zip'
@@ -77,19 +78,11 @@ def prepare(prepCtx):
 	    url = BOOTSTRAP_URL % sourceFile
 	    filePath = os.path.join(tempDir, sourceFile)
 	    prepCtx.start_msg('Downloading %s' % url)
-	    triesRemaining = 10
-	    while triesRemaining > 1:
-		try:
-		    urllib.urlretrieve(url, filePath)
-		    break
-		except urllib.ContentTooShortError:
-		    triesRemaining -= 1
-		if os.path.exists(filePath):
-		    os.remove(filePath)
-		else:
-		    prepCtx.fatal('Could not download %s' % url)
-	    handle = zipfile.Zipfile(filePath, 'r')
-	    handle.extractall(productPath)
+	    if tryDownload(url, filePath, 10):
+		handle = zipfile.Zipfile(filePath, 'r')
+		handle.extractall(productPath)
+	    else:
+		prepCtx.fatal('Could not download %s' % url)
 	finally:
 	    shutil.rmtree(tempDir)
     wafExe = os.path.abspath(sys.argv[0])
