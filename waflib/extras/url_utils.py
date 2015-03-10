@@ -22,7 +22,9 @@ When using this tool, the wscript will look like:
 	    prep.fatal('Could not download %s' % srcUrl)
 '''
 
+import tempfile
 import urllib
+import zipfile
 
 def tryDownload(srcUrl, tgtPath, maxAttempts):
     triesRemaining = maxAttempts
@@ -36,3 +38,16 @@ def tryDownload(srcUrl, tgtPath, maxAttempts):
 	    os.remove(tgtPath)
     else:
 	return False
+
+def extractRemoteZip(srcUrl, tgtDir):
+    result = False
+    tempDir = tempfile.mkdtemp(prefix='url_utils-')
+    try:
+	tempFile = os.path.join(tempDir, 'temp.zip')
+	if tryDownload(url, tempFile, 10):
+	    handle = zipfile.Zipfile(tempFile, 'r')
+	    handle.extractall(tgtDir)
+	    result = True
+    finally:
+	shutil.rmtree(tempDir)
+    return result
