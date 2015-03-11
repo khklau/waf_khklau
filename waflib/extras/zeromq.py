@@ -32,7 +32,7 @@ import tempfile
 import zipfile
 from waflib import Utils, Context
 from waflib.Configure import conf
-from waflib.extras.url_utils import extractRemoteZip
+from waflib.extras.bootstrap import BootStrap
 
 BOOTSTRAP_URL = 'https://github.com/khklau/zero_bootstrap/archive/%s'
 BOOTSTRAP_FILE = 'zeromq_bootstrap-%s.zip'
@@ -50,54 +50,34 @@ def options(optCtx):
 def prepare(prepCtx):
     if not prepCtx.env.dep_directory.contains('zeromq'):
 	return
-    productPath = ''
     product = prepCtx.env.dep_directory.find('zeromq')
     if len(product.dep_file_path) > 0:
 	productPath = os.path.dirname(product.dep_file_path)
     else:
 	productPath = os.path.join(prepCtx.options.dep_base_dir,
 		'%s-%s' % (product.getName(), product.getVersion()))
-    topWscript = os.path.join(productPath, Context.WSCRIPT_FILE)
-    if not os.path.exists(topWscript) or not os.access(topWscript, os.R_OK):
-	if os.path.isdir(productPath):
-	    shutil.rmtree(productPath)
+    if product.getVersion().lower() == 'master':
+	sourceFile = 'master.zip'
+    else:
+	sourceFile = BOOTSTRAP_FILE % product.getVersion()
+    url = BOOTSTRAP_URL % sourceFile
+    prepCtx.msg('Downloading and extracting', url)
+    strap = BootStrap.init(productPath, url)
+    if strap is None:
+	prepCtx.fatal('Could not download and extract %s' % url)
+    prepCtx.msg('Preparing Zeromq dependency in', strap.getPath())
+    if strap.boot('prepare', 'configure', 'build'):
+	inclPath = os.path.join(strap.getPath(), 'include')
+	libPath = os.path.join(strap.getPath(), 'lib')
+	if os.path.isdir(inclPath) and os.path.isdir(libPath):
+	    prepCtx.msg('Setting Zeromq option zeromq_incpath to', inclPath)
+	    prepCtx.options.zeromq_incpath = inclPath
+	    prepCtx.msg('Setting Zeromq option zeromq_libpath to', libPath)
+	    prepCtx.options.zeromq_libpath = libPath
 	else:
-	    os.remove(productPath)
-	os.mkdir(productPath)
-	if product.getVersion().lower() == 'master':
-	    sourceFile = 'master.zip'
-	else:
-	    sourceFile = BOOTSTRAP_FILE % product.getVersion()
-	url = BOOTSTRAP_URL % sourceFile
-	prepCtx.start_msg('Downloading and extracting %s to' % url)
-	if extractRemoteZip(url, productPath):
-	    prepCtx.end_msg(productPath)
-	else:
-	    prepCtx.fatal('Could not download and extract %s' % url)
-    wafExe = os.path.abspath(sys.argv[0])
-    cwd = os.getcwd()
-    try:
-	os.chdir(productPath)
-	prepCtx.msg('Preparing Zeromq dependency in', productPath)
-	returnCode = subprocess.call([
-		wafExe,
-		'prepare',
-		'configure',
-		'build'])
-	if returnCode != 0:
-	    prepCtx.fatal('Zeromq preparation failed: %d' % returnCode)
-	else:
-	    inclPath = os.path.join(productPath, 'include')
-	    libPath = os.path.join(productPath, 'lib')
-	    if os.path.isdir(inclPath) and os.path.isdir(libPath):
-		prepCtx.msg('Setting Zeromq option zeromq_incpath to', inclPath)
-		prepCtx.options.zeromq_incpath = inclPath
-		prepCtx.msg('Setting Zeromq option zeromq_libpath to', libPath)
-		prepCtx.options.zeromq_libpath = libPath
-	    else:
-		prepCtx.fatal('Zeromq preparation failed: %s and %s not found' % (inclPath, libPath))
-    finally:
-	os.chdir(cwd)
+	    prepCtx.fatal('Zeromq preparation failed: %s and %s not found' % (inclPath, libPath))
+    else:
+	prepCtx.fatal('Zeromq preparation failed')
 
 @conf
 def check_zeromq(self):

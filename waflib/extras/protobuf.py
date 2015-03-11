@@ -33,7 +33,7 @@ import tempfile
 import zipfile
 from waflib import Utils, Context
 from waflib.Configure import conf
-from waflib.extras.url_utils import extractRemoteZip
+from waflib.extras.bootstrap import BootStrap
 
 BOOTSTRAP_URL = 'https://github.com/khklau/protobuf_bootstrap/archive/%s'
 BOOTSTRAP_FILE = 'protobuf_bootstrap-%s.zip'
@@ -64,57 +64,38 @@ def options(optCtx):
 def prepare(prepCtx):
     if not prepCtx.env.dep_directory.contains('protobuf'):
 	return
-    productPath = ''
     product = prepCtx.env.dep_directory.find('protobuf')
     if len(product.dep_file_path) > 0:
 	productPath = os.path.dirname(product.dep_file_path)
     else:
 	productPath = os.path.join(prepCtx.options.dep_base_dir,
 		'%s-%s' % (product.getName(), product.getVersion()))
-    topWscript = os.path.join(productPath, Context.WSCRIPT_FILE)
-    if not os.path.exists(topWscript) or not os.access(topWscript, os.R_OK):
-	if os.path.isdir(productPath):
-	    shutil.rmtree(productPath)
+    if product.getVersion().lower() == 'master':
+	sourceFile = 'master.zip'
+    else:
+	sourceFile = BOOTSTRAP_FILE % product.getVersion()
+    url = BOOTSTRAP_URL % sourceFile
+    prepCtx.msg('Downloading and extracting', url)
+    strap = BootStrap.init(productPath, url)
+    if strap is None:
+	prepCtx.fatal('Could not download and extract %s' % url)
+    prepCtx.msg('Preparing Protocol Buffers dependency in', strap.getPath())
+    if strap.boot('prepare', 'configure', 'build'):
+	binPath = os.path.join(strap.getPath(), 'bin')
+	inclPath = os.path.join(strap.getPath(), 'include')
+	libPath = os.path.join(strap.getPath(), 'lib')
+	if os.path.isdir(binPath) and os.path.isdir(inclPath) and os.path.isdir(libPath):
+	    prepCtx.msg('Setting Protocol Buffers option protobuf_binpath to', binPath)
+	    prepCtx.options.protobuf_binpath = binPath
+	    prepCtx.msg('Setting Protocol Buffers option protobuf_incpath to', inclPath)
+	    prepCtx.options.protobuf_incpath = inclPath
+	    prepCtx.msg('Setting Protocol Buffers option protobuf_libpath to', libPath)
+	    prepCtx.options.protobuf_libpath = libPath
 	else:
-	    os.remove(productPath)
-	os.mkdir(productPath)
-	if product.getVersion().lower() == 'master':
-	    sourceFile = 'master.zip'
-	else:
-	    sourceFile = BOOTSTRAP_FILE % product.getVersion()
-	url = BOOTSTRAP_URL % sourceFile
-	prepCtx.start_msg('Downloading and extracting %s to' % url)
-	if extractRemoteZip(url, productPath):
-	    prepCtx.end_msg(productPath)
-	else:
-	    prepCtx.fatal('Could not download and extract %s' % url)
-    wafExe = os.path.abspath(sys.argv[0])
-    cwd = os.getcwd()
-    try:
-	os.chdir(productPath)
-	prepCtx.msg('Preparing Protocol Buffers dependency in', productPath)
-	returnCode = subprocess.call([
-		wafExe,
-		'prepare',
-		'configure',
-		'build'])
-	if returnCode != 0:
-	    prepCtx.fatal('Protocol Buffers preparation failed: %d' % returnCode)
-	else:
-	    binPath = os.path.join(productPath, 'bin')
-	    inclPath = os.path.join(productPath, 'include')
-	    libPath = os.path.join(productPath, 'lib')
-	    if os.path.isdir(binPath) and os.path.isdir(inclPath) and os.path.isdir(libPath):
-		prepCtx.msg('Setting Protocol Buffers option protobuf_binpath to', binPath)
-		prepCtx.options.protobuf_binpath = binPath
-		prepCtx.msg('Setting Protocol Buffers option protobuf_incpath to', inclPath)
-		prepCtx.options.protobuf_incpath = inclPath
-		prepCtx.msg('Setting Protocol Buffers option protobuf_libpath to', libPath)
-		prepCtx.options.protobuf_libpath = libPath
-	    else:
-		prepCtx.fatal('Protocol Buffers preparation failed: %s and %s not found' % (inclPath, libPath))
-    finally:
-	os.chdir(cwd)
+	    prepCtx.fatal('Protocol Buffers preparation failed: %s, %s and %s not found' % (binPath, inclPath, libPath))
+
+    else:
+	prepCtx.fatal('Protocol Buffers preparation failed')
 
 @conf
 def check_protobuf(self):
