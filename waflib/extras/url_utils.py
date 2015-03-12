@@ -22,6 +22,9 @@ When using this tool, the wscript will look like:
 	    prep.fatal('Could not download %s' % srcUrl)
 '''
 
+import hashlib
+import os
+import tarfile
 import tempfile
 import urllib
 import zipfile
@@ -39,6 +42,19 @@ def tryDownload(srcUrl, tgtPath, maxAttempts):
     else:
 	return False
 
+def extractRemoteTar(srcUrl, tgtDir):
+    result = False
+    tempDir = tempfile.mkdtemp(prefix='url_utils-')
+    try:
+	tempFile = os.path.join(tempDir, 'temp.zip')
+	if tryDownload(url, tempFile, 10):
+	    handle = tarfile.open(tempFile, 'r:*')
+	    handle.extractall(tgtDir)
+	    result = True
+    finally:
+	shutil.rmtree(tempDir)
+    return result
+
 def extractRemoteZip(srcUrl, tgtDir):
     result = False
     tempDir = tempfile.mkdtemp(prefix='url_utils-')
@@ -51,3 +67,20 @@ def extractRemoteZip(srcUrl, tgtDir):
     finally:
 	shutil.rmtree(tempDir)
     return result
+
+def syncRemoteFile(sha256sum, srcUrl, tgtPath):
+    if os.access(tgtPath, os.R_OK):
+	hasher = hashlib.sha256()
+	handle = open(tgtPath, 'rb')
+	try:
+	    hasher.update(handle.read())
+	finally:
+	    handle.close()
+	if hasher.digest() != sha256sum:
+	    os.remove(tgtPath)
+    elif os.path.exists(tgtPath):
+	os.remove(tgtPath)
+    if os.access(tgtPath, os.R_OK):
+	return True
+    else:
+	return tryDownload(srcUrl, tgtPath, 10)
