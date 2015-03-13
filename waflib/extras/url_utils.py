@@ -68,7 +68,7 @@ def extractRemoteZip(srcUrl, tgtDir):
 	shutil.rmtree(tempDir)
     return result
 
-def syncRemoteFile(sha256sum, srcUrl, tgtPath):
+def syncRemoteFile(sha256sum, srcUrl, tgtPath, maxAttempts):
     if os.access(tgtPath, os.R_OK):
 	hasher = hashlib.sha256()
 	handle = open(tgtPath, 'rb')
@@ -83,4 +83,4 @@ def syncRemoteFile(sha256sum, srcUrl, tgtPath):
     if os.access(tgtPath, os.R_OK):
 	return True
     else:
-	return tryDownload(srcUrl, tgtPath, 10)
+	return tryDownload(srcUrl, tgtPath, maxAttempts)
