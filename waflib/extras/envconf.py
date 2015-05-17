@@ -30,7 +30,7 @@ class AppendListToEnvVar:
     def execute(self, confCtx):
 	for value in self.value_list:
 	    confCtx.start_msg('Appending to %s' % self.env_var)
-	    confCtx.env.append_value(self.env_var, [value])
+	    confCtx.env.append_value(self.env_var, [value.encode('ascii', 'ignore')])
 	    confCtx.end_msg(value)
 
 def decode_hook(dictionary):
