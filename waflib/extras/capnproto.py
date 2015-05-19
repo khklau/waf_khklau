@@ -40,8 +40,9 @@ BOOTSTRAP_FILE = 'capnproto_bootstrap-%s.zip'
 
 def define_task_gen(context, **keywords):
     context(name=keywords['name'],
-	    rule='${CAPNP} compile --output=c++:%s ${CAPNP_FLAGS} -I%s -I${INCLUDES_CAPNPROTO} ${SRC[0].abspath()}' % (
+	    rule='${CAPNP} compile --output=c++:%s ${CAPNP_FLAGS} -I%s -I${INCLUDES_CAPNPROTO} --src-prefix=%s ${SRC[0].abspath()}' % (
                         context.path.get_bld().abspath(),
+                        context.path.get_src().abspath(),
                         context.path.get_src().abspath()),
 	    source=keywords['source'],
 	    target=keywords['target'],
