@@ -49,6 +49,6 @@ def configure(confCtx):
     else:
 	conf_result_file = conf_result_dir.find_node('%s.json' % confCtx.env.CXX_NAME)
 	if conf_result_file is None:
-	    confCtx.fatal('file not found')
+	    confCtx.fatal('%s.json file not found in %s' % (confCtx.env.CXX_NAME, conf_result_dir.abspath()))
 	else:
 	    process(conf_result_file.abspath(), confCtx)
