@@ -182,4 +182,5 @@ def prepare(prepCtx):
 
 def configure(confCtx):
     for dep in parse(confCtx, getThisJsonPath(confCtx)).dep_list:
+	confCtx.env.product = dep
 	confCtx.load(dep.getName())
