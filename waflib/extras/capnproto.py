@@ -18,7 +18,8 @@ When using this tool, the wscript will look like:
 	conf.load('compiler_cxx cxx capnproto')
 
     def build(bld):
-	bld(source='msg.capnp', target='app', features = 'cxx', use='CAPNPROTO')
+	bld(source='msg.capnp', target='app', features = 'cxx', use='CAPNPROTO_STLIB')
+	bld(source='foo.capnp', target='bar', features = 'cxx', use='KJ_SHLIB')
 
 Options available are:
     --capnproto-binpath : the directory containing the compiler
@@ -41,7 +42,7 @@ BOOTSTRAP_FILE = 'capnproto_bootstrap-%s.zip'
 
 def define_task_gen(context, **keywords):
     context(name=keywords['name'],
-	    rule='${CAPNP} compile --output=c++:%s ${CAPNP_FLAGS} -I%s -I${INCLUDES_CAPNPROTO} %s --src-prefix=%s ${SRC[0].abspath()}' % (
+	    rule='${CAPNP} compile --output=c++:%s ${CAPNP_FLAGS} -I%s -I${INCLUDES_CAPNPROTO_STLIB} %s --src-prefix=%s ${SRC[0].abspath()}' % (
                         context.path.get_bld().abspath(),
                         context.path.get_src().abspath(),
 			string.join(['-I%s' % inc for inc in keywords['includes']]),
@@ -102,18 +103,31 @@ def prepare(prepCtx):
 
 @conf
 def check_capnproto(self):
+    product = self.env.product
     self.start_msg('Checking Capn Proto compiler')
     if not os.access(self.env['CAPNP'], os.X_OK):
 	self.fatal('%s is not executable' % self.env['CAPNP'])
     self.end_msg('ok')
     self.start_msg('Checking Capn Proto headers')
-    headerPath = os.path.join(self.env['INCLUDES_CAPNPROTO'], 'capnp', 'message.h')
+    headerPath = os.path.join(self.env['INCLUDES_CAPNPROTO_STLIB'], 'capnp', 'message.h')
     if not os.access(headerPath, os.R_OK):
 	self.fatal('%s is not readable' % headerPath)
     self.end_msg('ok')
     self.start_msg('Checking Capn Proto libraries')
-    for lib in self.env['STLIB_CAPNPROTO']: 
-	libPath = os.path.join(self.env['LIBPATH_CAPNPROTO'], "lib%s.a" % lib)
+    for lib in self.env['LIB_CAPNPROTO_SHLIB']: 
+	libPath = os.path.join(self.env['LIBPATH_CAPNPROTO_SHLIB'], "lib%s-%s.so" % (lib, product.getVersion()))
+	if not os.access(libPath, os.R_OK):
+	    self.fatal('%s is not readable' % libPath)
+    for lib in self.env['STLIB_CAPNPROTO_STLIB']: 
+	libPath = os.path.join(self.env['STLIBPATH_CAPNPROTO_STLIB'], "lib%s.a" % lib)
+	if not os.access(libPath, os.R_OK):
+	    self.fatal('%s is not readable' % libPath)
+    for lib in self.env['LIB_KJ_SHLIB']: 
+	libPath = os.path.join(self.env['LIBPATH_KJ_SHLIB'], "lib%s-%s.so" % (lib, product.getVersion()))
+	if not os.access(libPath, os.R_OK):
+	    self.fatal('%s is not readable' % libPath)
+    for lib in self.env['STLIB_KJ_STLIB']: 
+	libPath = os.path.join(self.env['STLIBPATH_KJ_STLIB'], "lib%s.a" % lib)
 	if not os.access(libPath, os.R_OK):
 	    self.fatal('%s is not readable' % libPath)
     self.end_msg('ok')
@@ -156,9 +170,18 @@ def configure(confCtx):
 
     confCtx.env['CAPNP'] = capnppath
     confCtx.env['CAPNP_FLAGS'] = '--no-standard-import'
-    confCtx.env['INCLUDES_CAPNPROTO'] = incpath
-    confCtx.env['LIBPATH_CAPNPROTO'] = libpath
-    confCtx.env['STLIB_CAPNPROTO'] = ['capnp', 'kj']
+    confCtx.env['INCLUDES_CAPNPROTO_STLIB'] = incpath
+    confCtx.env['INCLUDES_CAPNPROTO_SHLIB'] = incpath
+    confCtx.env['INCLUDES_KJ_STLIB'] = incpath
+    confCtx.env['INCLUDES_KJ_SHLIB'] = incpath
+    confCtx.env['LIBPATH_CAPNPROTO_SHLIB'] = libpath
+    confCtx.env['STLIBPATH_CAPNPROTO_STLIB'] = libpath
+    confCtx.env['LIBPATH_KJ_SHLIB'] = libpath
+    confCtx.env['STLIBPATH_KJ_STLIB'] = libpath
+    confCtx.env['LIB_CAPNPROTO_SHLIB'] = ['capnp', 'kj']
+    confCtx.env['STLIB_CAPNPROTO_STLIB'] = ['capnp', 'kj']
+    confCtx.env['LIB_KJ_SHLIB'] = ['kj']
+    confCtx.env['STLIB_KJ_STLIB'] = ['kj']
     confCtx.env['CAPNP_ST'] = '-I%s'
 
     confCtx.check_capnproto()
