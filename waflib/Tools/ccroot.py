@@ -632,7 +632,7 @@ class fake_o(Task.Task):
 	def runnable_status(self):
 		return Task.SKIP_ME
 
-@extension('.o', '.obj')
+@extension('.o', '.obj', '.a')
 def add_those_o_files(self, node):
 	tsk = self.create_task('fake_o', [], node)
 	try:
