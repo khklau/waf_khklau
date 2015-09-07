@@ -98,6 +98,7 @@ def check_asio(self):
 	libPath = os.path.join(self.env['STLIBPATH_ASIO_STLIB'], "lib%s.a" % lib)
 	if not os.access(libPath, os.R_OK):
 	    self.fatal('%s is not readable' % libPath)
+	self.env['ASIO_STLIB_PATH'].append(libPath)
     self.end_msg('ok')
 
 def configure(confCtx):
@@ -125,6 +126,7 @@ def configure(confCtx):
     confCtx.env['STLIBPATH_ASIO_STLIB'] = libpath
     confCtx.env['LIB_ASIO_SHLIB'] = ['asio']
     confCtx.env['STLIB_ASIO_STLIB'] = ['asio']
+    confCtx.env['ASIO_STLIB_PATH'] = []
 
     confCtx.check_asio()
 
