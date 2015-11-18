@@ -18,7 +18,8 @@ When using this tool, the wscript will look like:
 	conf.load('compiler_cxx glog')
 
     def build(bld):
-	bld(source='main.cpp', target='app', use='GLOG')
+	bld(source='main.cpp', target='app', use='GLOG_STLIB')
+	bld(source='main.cpp', target='app', use='GLOG_SHLIB')
 
 Options available are:
     --glog-incpath : the directory containing the header files
@@ -85,15 +86,20 @@ def prepare(prepCtx):
 def check_glog(self):
     product = self.env.product
     self.start_msg('Checking GLog headers')
-    headerPath = os.path.join(self.env['INCLUDES_GLOG'], 'glog', 'logging.h')
+    headerPath = os.path.join(self.env['INCLUDES_GLOG_STLIB'], 'glog', 'logging.h')
     if not os.access(headerPath, os.R_OK):
 	self.fatal('%s is not readable' % headerPath)
     self.end_msg('ok')
     self.start_msg('Checking GLog libraries')
     for lib in self.env['LIB_GLOG']: 
-	libPath = os.path.join(self.env['LIBPATH_GLOG'], "lib%s.so" % lib)
+	libPath = os.path.join(self.env['LIBPATH_GLOG_SHLIB'], "lib%s.so" % lib)
 	if not os.access(libPath, os.R_OK):
 	    self.fatal('%s is not readable' % libPath)
+    for lib in self.env['STLIB_GLOG_STLIB']: 
+	libPath = os.path.join(self.env['STLIBPATH_GLOG_STLIB'], "lib%s.a" % lib)
+	if not os.access(libPath, os.R_OK):
+	    self.fatal('%s is not readable' % libPath)
+	self.env['GLOG_STLIB_PATH'].append(libPath)
     self.end_msg('ok')
 
 def configure(confCtx):
@@ -115,13 +121,18 @@ def configure(confCtx):
     else:
 	libpath = '/usr/local/lib'
 
-    confCtx.env['INCLUDES_GLOG'] = incpath
-    confCtx.env['LIBPATH_GLOG'] = libpath
-    confCtx.env['LIB_GLOG'] = ['glog']
-    if platform == 'linux2':
+    confCtx.env['INCLUDES_GLOG_STLIB'] = incpath
+    confCtx.env['INCLUDES_GLOG_SHLIB'] = incpath
+    confCtx.env['STLIBPATH_GLOG_STLIB'] = libpath
+    confCtx.env['LIBPATH_GLOG_SHLIB'] = libpath
+    confCtx.env['STLIB_GLOG_STLIB'] = ['glog']
+    confCtx.env['LIB_GLOG_SHLIB'] = ['glog']
+    if platform == 'linux':
+	confCtx.env['STLIB_GLOG_STLIB'].append('unwind')
+	confCtx.env['LIB_GLOG_SHLIB'].append('unwind')
 	if os.uname()[4] == 'x86_64':
-	    confCtx.env['LIB_GLOG'].append('libunwind-x86_64')
-	else:
-	    confCtx.env['LIB_GLOG'].append('libunwind')
+	    confCtx.env['STLIB_GLOG_STLIB'].append('unwind-x86_64')
+	    confCtx.env['LIB_GLOG_SHLIB'].append('unwind-x86_64')
+    confCtx.env['GLOG_STLIB_PATH'] = []
 
     confCtx.check_glog()
