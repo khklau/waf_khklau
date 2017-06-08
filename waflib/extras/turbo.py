@@ -124,8 +124,20 @@ def configure(confCtx):
     confCtx.env['INCLUDES_TURBO_SHLIB'] = incpath
     confCtx.env['LIBPATH_TURBO_SHLIB'] = libpath
     confCtx.env['STLIBPATH_TURBO_STLIB'] = libpath
-    confCtx.env['LIB_TURBO_SHLIB'] = ['turbo_algorithm', 'turbo_filesystem', 'turbo_ipc', 'turbo_process']
-    confCtx.env['STLIB_TURBO_STLIB'] = ['turbo_algorithm', 'turbo_filesystem', 'turbo_ipc', 'turbo_process']
+    confCtx.env['LIB_TURBO_SHLIB'] = ['turbo_algorithm',
+                                        'turbo_cinterop',
+                                        'turbo_filesystem',
+                                        'turbo_ipc',
+                                        'turbo_math',
+                                        'turbo_memory',
+                                        'turbo_process']
+    confCtx.env['STLIB_TURBO_STLIB'] = ['turbo_algorithm',
+                                        'turbo_cinterop',
+                                        'turbo_filesystem',
+                                        'turbo_ipc',
+                                        'turbo_math',
+                                        'turbo_memory',
+                                        'turbo_process']
     confCtx.env['TURBO_STLIB_PATH'] = []
 
     confCtx.check_turbo()
