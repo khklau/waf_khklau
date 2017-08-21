@@ -18,7 +18,7 @@ When using this tool, the wscript will look like:
 	conf.load('compiler_cxx gmock')
 
     def build(bld):
-	bld(source='main.cpp', target='app', use='GMOCK')
+	bld(source='main.cpp', target='app', use='GMOCK_STLIB')
 
 Options available are:
     --gmock-incpath : the directory containing the header files
@@ -89,13 +89,13 @@ def prepare(prepCtx):
 @conf
 def check_gmock(self):
     self.start_msg('Checking Gmock headers')
-    headerPath = os.path.join(self.env['INCLUDES_GMOCK'], 'gmock', 'gmock.h')
+    headerPath = os.path.join(self.env['INCLUDES_GMOCK_STLIB'], 'gmock', 'gmock.h')
     if not os.access(headerPath, os.R_OK):
 	self.fatal('%s is not readable' % headerPath)
     self.end_msg('ok')
     self.start_msg('Checking Gmock libraries')
-    for lib in self.env['STLIB_GMOCK']: 
-	libPath = os.path.join(self.env['STLIBPATH_GMOCK'], "lib%s.a" % lib)
+    for lib in self.env['STLIB_GMOCK_STLIB']:
+	libPath = os.path.join(self.env['STLIBPATH_GMOCK_STLIB'], "lib%s.a" % lib)
 	if not os.access(libPath, os.R_OK):
 	    self.fatal('%s is not readable' % libPath)
     self.end_msg('ok')
@@ -119,8 +119,8 @@ def configure(confCtx):
     else:
 	libpath = '/usr/local/lib'
 
-    confCtx.env['INCLUDES_GMOCK'] = incpath
-    confCtx.env['STLIBPATH_GMOCK'] = libpath
-    confCtx.env['STLIB_GMOCK'] = ['gmock', 'gmock_main']
+    confCtx.env['INCLUDES_GMOCK_STLIB'] = incpath
+    confCtx.env['STLIBPATH_GMOCK_STLIB'] = libpath
+    confCtx.env['STLIB_GMOCK_STLIB'] = ['gmock', 'gmock_main']
 
     confCtx.check_gmock()
