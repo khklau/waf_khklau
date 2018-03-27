@@ -124,8 +124,8 @@ def configure(confCtx):
     confCtx.env['INCLUDES_BEAM_SHLIB'] = incpath
     confCtx.env['LIBPATH_BEAM_SHLIB'] = libpath
     confCtx.env['STLIBPATH_BEAM_STLIB'] = libpath
-    confCtx.env['LIB_BEAM_SHLIB'] = ['beam_internet', 'beam_duplex']
-    confCtx.env['STLIB_BEAM_STLIB'] = ['beam_internet', 'beam_duplex']
+    confCtx.env['LIB_BEAM_SHLIB'] = ['beam_internet', 'beam_duplex', 'beam_message']
+    confCtx.env['STLIB_BEAM_STLIB'] = ['beam_internet', 'beam_duplex', 'beam_message']
     confCtx.env['BEAM_STLIB_PATH'] = []
 
     confCtx.check_beam()
