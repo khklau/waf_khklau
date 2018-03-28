@@ -18,7 +18,7 @@ When using this tool, the wscript will look like:
 	conf.load('compiler_cxx gtest')
 
     def build(bld):
-	bld(source='main.cpp', target='app', use='GTEST')
+	bld(source='main.cpp', target='app', use='GTEST_STLIB')
 
 Options available are:
     --gtest-binpath : the directory containing the gtest-config script
@@ -95,8 +95,8 @@ def check_gtest(self):
 	self.fatal('%s is not readable' % headerPath)
     self.end_msg('ok')
     self.start_msg('Checking Gtest libraries')
-    for lib in self.env['STLIB_GTEST']: 
-	libPath = os.path.join(self.env['STLIBPATH_GTEST'], "lib%s.a" % lib)
+    for lib in self.env['STLIB_GTEST_STLIB']:
+	libPath = os.path.join(self.env['STLIBPATH_GTEST_STLIB'], "lib%s.a" % lib)
 	if not os.access(libPath, os.R_OK):
 	    self.fatal('%s is not readable' % libPath)
     self.end_msg('ok')
@@ -121,7 +121,7 @@ def configure(confCtx):
 	libpath = '/usr/local/lib'
 
     confCtx.env['INCLUDES_GTEST'] = incpath
-    confCtx.env['STLIBPATH_GTEST'] = libpath
-    confCtx.env['STLIB_GTEST'] = ['gtest', 'gtest_main']
+    confCtx.env['STLIBPATH_GTEST_STLIB'] = libpath
+    confCtx.env['STLIB_GTEST_STLIB'] = ['gtest', 'gtest_main']
 
     confCtx.check_gtest()
